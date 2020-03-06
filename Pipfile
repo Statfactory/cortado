@@ -1,0 +1,22 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+pylint = "*"
+notebook = "*"
+pytest = "*"
+scipy = "*"
+scikit-learn = "*"
+xgboost = "*"
+setuptools = "*"
+twine = "*"
+
+[packages]
+numpy = "*"
+numba = "*"
+pandas = "*"
+
+[requires]
+python_version = "3.7.6"
