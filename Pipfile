@@ -12,6 +12,7 @@ scikit-learn = "*"
 xgboost = "*"
 setuptools = "*"
 twine = "*"
+pypinfo = "*"
 
 [packages]
 numpy = "*"

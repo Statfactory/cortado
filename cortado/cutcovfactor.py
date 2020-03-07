@@ -7,6 +7,43 @@ from numba import jit
 from numba.typed import Dict
 from numba import types
 
+@jit(nopython=True, cache=False)
+def g_leftclosed(slice, buf, cuts, k):
+    def f(x):
+        if np.isnan(x):
+            return 0
+        if x == np.PINF:
+            return k
+        else:
+            i = np.searchsorted(cuts, x, side='right') 
+            return i
+
+    for i in range(len(slice)):
+        buf[i] = f(slice[i])
+    if len(buf) == len(slice):
+        return buf
+    else:
+        return buf[:len(slice)]
+
+@jit(nopython=True, cache=False)
+def g_rightclosed(slice, buf, cuts):
+    def f(x):
+        if np.isnan(x):
+            return 0
+        if x == np.NINF:
+            return 1
+        else:
+            i = np.searchsorted(cuts, x, side='left') 
+            return i
+
+    for i in range(len(slice)):
+        buf[i] = f(slice[i])
+    if len(buf) == len(slice):
+        return buf
+    else:
+        return buf[:len(slice)]
+
+
 class CutCovFactor(AbstractFactor):
 
     def __init__(self, covariate, cuts, rightclosed = False):
@@ -21,42 +58,7 @@ class CutCovFactor(AbstractFactor):
             levels = [MISSINGLEVEL] + ["[{x},{y}{z}".format(x=str(cuts[i]), y=str(cuts[i + 1]), z="]" if i == (levelcount - 1) else ")") for i in range(levelcount)]
         dtype = np.uint8 if levelcount <= 256 else np.uint16
 
-        @jit(nopython=True, cache=True)
-        def g_leftclosed(slice, buf, cuts, k):
-            def f(x):
-                if np.isnan(x):
-                    return 0
-                if x == np.PINF:
-                    return k
-                else:
-                    i = np.searchsorted(cuts, x, side='right') 
-                    return i
-
-            for i in range(len(slice)):
-                buf[i] = f(slice[i])
-            if len(buf) == len(slice):
-                return buf
-            else:
-                return buf[:len(slice)]
-
-        @jit(nopython=True, cache=True)
-        def g_rightclosed(slice, buf, cuts):
-            def f(x):
-                if np.isnan(x):
-                    return 0
-                if x == np.NINF:
-                    return 1
-                else:
-                    i = np.searchsorted(cuts, x, side='left') 
-                    return i
-
-            for i in range(len(slice)):
-                buf[i] = f(slice[i])
-            if len(buf) == len(slice):
-                return buf
-            else:
-                return buf[:len(slice)]
-
+        
         def slicer(start, length, slicelen):
             length = min(len(self) - start, length)
             slicelen = min(length, slicelen)

@@ -6,7 +6,12 @@ from numba import jit
 from numba.typed import Dict
 from numba import types
 
-
+@jit(nopython=True, cache=False)
+def f_unique(acc, slice):
+    for v in slice:
+        if not np.isnan(v) and not v in acc:
+            acc[v] = v
+    return acc
 class AbstractCovariate(ABC):
 
     @property
@@ -43,13 +48,8 @@ class AbstractCovariate(ABC):
         dt = types.float32 if self.slicer.dtype == np.float32 else types.float64
         set0 = Dict.empty(key_type=dt, value_type=dt)
         
-        @jit(nopython=True, cache=True)
-        def f(acc, slice):
-            for v in slice:
-                if not np.isnan(v) and not v in acc:
-                    acc[v] = v
-            return acc
-        res = Seq.reduce(f, set0, slices)
+        
+        res = Seq.reduce(f_unique, set0, slices)
 
         arr = np.array(list(res.keys()), dtype=self.slicer.dtype)
         arr.sort()

@@ -8,15 +8,42 @@ from numba import jit
 from functools import reduce
 from datetime import datetime
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
+def f_splitnode(nodeslice, fslices, issplitnode, leftpartitions, factorindex, nodemap):
+    for i in range(len(nodeslice)):
+        nodeid = nodeslice[i]
+        if issplitnode[nodeid]:
+            levelindex = fslices[factorindex[nodeid], i]
+            nodeslice[i] = nodemap[nodeslice[i]] if leftpartitions[nodeid, levelindex] else nodemap[nodeslice[i]] + 1
+        else:
+            nodeslice[i] = nodemap[nodeslice[i]]
+
+@jit(nopython=True, cache=False)
+def f_hist(acc0, zipslice):
+    nodeslice, factorslice, gslice, hslice = zipslice
+    gsum, hsum, nodecansplit = acc0
+    for i in range(len(nodeslice)):
+        nodeid = nodeslice[i]
+        if nodecansplit[nodeid]:
+            levelindex = factorslice[i]
+            gsum[nodeid, levelindex] += gslice[i]
+            hsum[nodeid, levelindex] += hslice[i]
+    return (gsum, hsum, nodecansplit)
+
+@jit(nopython=True, cache=False)
+def f_weights(nodeids, weights, fm, eta):
+    for i in range(len(nodeids)):
+        fm[i] = eta * weights[nodeids[i]] + fm[i]
+
+@jit(nopython=True, cache=False)
 def get_weight(g, h, lambda_): 
     return -g / (h + lambda_)
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def getloss(g, h, lambda_): 
     return -(g * g) / (h + lambda_)
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def get_best_stump_split(g_hist, h_hist, partition, lambda_, minh):
     gsum = np.sum(g_hist)
     hsum = np.sum(h_hist)
@@ -49,7 +76,7 @@ def get_best_stump_split(g_hist, h_hist, partition, lambda_, minh):
     else:
         return (currloss, bestloss, partition, partition, 0.0, 0.0, 0.0, 0.0)
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def get_best_range_split(g_hist, h_hist, partition, lambda_, minh):
     gsum = np.sum(g_hist)
     hsum = np.sum(h_hist)
@@ -129,19 +156,19 @@ def get_hist_slice(gsum0, hsum0, nodeids, nodecansplit, factor, gcovariate, hcov
     hslices = hcovariate.slicer(start, length, slicelen)
     zipslices = Seq.zip(nodeslices, factorslices, gslices, hslices)
 
-    @jit(nopython=True, cache=True)
-    def f (acc0, zipslice):
-        nodeslice, factorslice, gslice, hslice = zipslice
-        gsum, hsum, nodecansplit = acc0
-        for i in range(len(nodeslice)):
-            nodeid = nodeslice[i]
-            if nodecansplit[nodeid]:
-                levelindex = factorslice[i]
-                gsum[nodeid, levelindex] += gslice[i]
-                hsum[nodeid, levelindex] += hslice[i]
-        return (gsum, hsum, nodecansplit)
+    # @jit(nopython=True, cache=False)
+    # def f_hist(acc0, zipslice):
+    #     nodeslice, factorslice, gslice, hslice = zipslice
+    #     gsum, hsum, nodecansplit = acc0
+    #     for i in range(len(nodeslice)):
+    #         nodeid = nodeslice[i]
+    #         if nodecansplit[nodeid]:
+    #             levelindex = factorslice[i]
+    #             gsum[nodeid, levelindex] += gslice[i]
+    #             hsum[nodeid, levelindex] += hslice[i]
+    #     return (gsum, hsum, nodecansplit)
 
-    return Seq.reduce(f, (gsum0, hsum0, nodecansplit), zipslices)
+    return Seq.reduce(f_hist, (gsum0, hsum0, nodecansplit), zipslices)
 
 def get_histogram(nodeids, nodecansplit, factor, gcovariate, hcovariate, slicelen):
     
@@ -162,17 +189,17 @@ def splitnodeidsslice(nodeids, factors, issplitnode, nodemap, leftpartitions, fa
         factorslices = NFactorSlicer(factors)(start, length, slicelength) 
         nodeslices = VectorSlicer(nodeids)(start, length, slicelength)
 
-        @jit(nopython=True, cache=True)
-        def f(nodeslice, fslices, issplitnode, leftpartitions, factorindex, nodemap):
-            for i in range(len(nodeslice)):
-                nodeid = nodeslice[i]
-                if issplitnode[nodeid]:
-                    levelindex = fslices[factorindex[nodeid], i]
-                    nodeslice[i] = nodemap[nodeslice[i]] if leftpartitions[nodeid, levelindex] else nodemap[nodeslice[i]] + 1
-                else:
-                    nodeslice[i] = nodemap[nodeslice[i]]
+        # @jit(nopython=True, cache=False)
+        # def f(nodeslice, fslices, issplitnode, leftpartitions, factorindex, nodemap):
+        #     for i in range(len(nodeslice)):
+        #         nodeid = nodeslice[i]
+        #         if issplitnode[nodeid]:
+        #             levelindex = fslices[factorindex[nodeid], i]
+        #             nodeslice[i] = nodemap[nodeslice[i]] if leftpartitions[nodeid, levelindex] else nodemap[nodeslice[i]] + 1
+        #         else:
+        #             nodeslice[i] = nodemap[nodeslice[i]]
 
-        Seq.foreach(lambda x: f(x[0], x[1], issplitnode, leftpartitions, factorindex, nodemap), Seq.zip(nodeslices, factorslices)) 
+        Seq.foreach(lambda x: f_splitnode(x[0], x[1], issplitnode, leftpartitions, factorindex, nodemap), Seq.zip(nodeslices, factorslices)) 
         
 def splitnodeids(nodeids, nodes, slicelength):
     nodecount = len(nodes)
@@ -297,12 +324,12 @@ def predict(treenodes, nodeids, fm, eta, lambda_):
     for (i, node) in enumerate(treenodes):
         weights[i] = -node.ghsum[0] / (node.ghsum[1] + lambda_)
 
-    @jit(nopython=True, cache=True)
-    def f(nodeids, weights, fm, eta):
-        for i in range(len(nodeids)):
-            fm[i] = eta * weights[nodeids[i]] + fm[i]
+    # @jit(nopython=True, cache=False)
+    # def f_weights(nodeids, weights, fm, eta):
+    #     for i in range(len(nodeids)):
+    #         fm[i] = eta * weights[nodeids[i]] + fm[i]
 
-    f(nodeids, weights, fm, eta)
+    f_weights(nodeids, weights, fm, eta)
 
 def growtree(factors, gcovariate, hcovariate, fm, eta, maxdepth, lambda_, gamma, minh, slicelen):
 

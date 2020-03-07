@@ -6,6 +6,14 @@ from numba import jit
 from numba.typed import Dict
 from numba import types
 
+@jit(nopython=True)
+def g_parse(slice, buf, parsed):
+    for i in range(len(slice)):
+        buf[i] = parsed[slice[i]]    
+    if len(buf) == len(slice):
+        return buf
+    else:
+        return buf[:len(slice)] 
 
 class ParseFactorCovariate(AbstractCovariate):
     def __init__(self, name, basefactor, func):
@@ -19,19 +27,9 @@ class ParseFactorCovariate(AbstractCovariate):
         for i, level in enumerate(levels):
             parsed[i] = func(level)
 
-        @jit(nopython=True)
-        def g(slice, buf, parsed):
-            for i in range(len(slice)):
-                buf[i] = parsed[slice[i]]    
-            if len(buf) == len(slice):
-                return buf
-            else:
-                return buf[:len(slice)] 
-
-
         def slice(start, length, slicelen):
             buf = np.empty(slicelen, dtype = np.float32)
-            return Seq.map((lambda slice: g(slice, buf, parsed)), basefactor.slicer(start, length, slicelen))
+            return Seq.map((lambda slice: g_parse(slice, buf, parsed)), basefactor.slicer(start, length, slicelen))
 
         self._slicer = FuncSlicer(slice, np.float32)
 

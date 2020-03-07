@@ -18,7 +18,7 @@ from pathlib import Path
 import random
 import string
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=False)
 def incr_(x, y):
     for i in range(len(x)):
         y[i] = x[i] + 1
