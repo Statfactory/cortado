@@ -33,6 +33,13 @@ class AbstractCovariate(ABC):
         res, _ = Seq.try_read(slices)
         return res
 
+    def cached(self):
+        from cortado.cachedcovariate import CachedCovariate
+        if isinstance(self, CachedCovariate):
+            return self
+        else:
+            return CachedCovariate(self)
+
     def unique(self):
         slices = self.slicer(0, len(self), SLICELEN)
         # v, tail = Seq.try_read(slices)
@@ -56,11 +63,13 @@ class AbstractCovariate(ABC):
         return arr
 
     def __repr__(self):
-        slices = self.slicer(0, min(HEADLENGTH, len(self)), HEADLENGTH)
+        k = min(HEADLENGTH, len(self))
+        slices = self.slicer(0, k, HEADLENGTH)
         def f(acc, slice):
             return acc + ' '.join(["." if np.isnan(v) else str(v) for v in slice]) + " "
         datahead = Seq.reduce(f, "", slices)
-        return "Covariate {cov} with {len} obs: {head}...".format(cov= self.name, len= len(self), head= datahead)
+        s = "" if k == len(self) else "..."
+        return "Covariate {cov} with {len} obs: {head}{s}".format(cov= self.name, len= len(self), head= datahead, s = s)
 
     def __str__(self):
         return self.__repr__()

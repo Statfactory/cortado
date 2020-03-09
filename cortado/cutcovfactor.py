@@ -43,7 +43,6 @@ def g_rightclosed(slice, buf, cuts):
     else:
         return buf[:len(slice)]
 
-
 class CutCovFactor(AbstractFactor):
 
     def __init__(self, covariate, cuts, rightclosed = False):

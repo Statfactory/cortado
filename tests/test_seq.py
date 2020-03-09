@@ -1,5 +1,5 @@
 from context import cortado
-from cortado.seq import Seq
+from cortado import Seq
 import pytest
 
 def test_from_gen():

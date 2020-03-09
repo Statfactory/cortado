@@ -29,6 +29,13 @@ class AbstractFactor(ABC):
     def slicer(self):
         pass
 
+    def cached(self):
+        from cortado.cachedfactor import CachedFactor
+        if isinstance(self, CachedFactor):
+            return self
+        else:
+            return CachedFactor(self)
+
     def get_freq(self):
         slices = self.slicer(0, len(self), SLICELEN)
         counts0 = np.zeros(len(self.levels), dtype=np.int32)
@@ -41,12 +48,14 @@ class AbstractFactor(ABC):
         return Seq.reduce(f, counts0, slices)
 
     def __repr__(self):
-            slices = self.slicer(0, min(HEADLENGTH, len(self)), HEADLENGTH)
-            levels = self.levels
-            def f(acc, slice):
-                return acc + ' '.join([levels[i] for i in slice]) + " "
-            datahead = Seq.reduce(f, "", slices)
-            return "Factor {f} with {len} obs and {n} levels: {head}...".format(f= self.name, len= len(self), head= datahead, n = len(levels))
+        k = min(HEADLENGTH, len(self))
+        slices = self.slicer(0, k, HEADLENGTH)
+        levels = self.levels
+        def f(acc, slice):
+            return acc + ' '.join([levels[i] for i in slice]) + " "
+        datahead = Seq.reduce(f, "", slices)
+        s = "" if k == len(self) else "..."
+        return "Factor {f} with {len} obs and {n} levels: {head}{s}".format(f= self.name, len= len(self), head= datahead, n = len(levels) - 1, s=s)
 
     def __str__(self):
         return self.__repr__()

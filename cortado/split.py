@@ -156,18 +156,6 @@ def get_hist_slice(gsum0, hsum0, nodeids, nodecansplit, factor, gcovariate, hcov
     hslices = hcovariate.slicer(start, length, slicelen)
     zipslices = Seq.zip(nodeslices, factorslices, gslices, hslices)
 
-    # @jit(nopython=True, cache=False)
-    # def f_hist(acc0, zipslice):
-    #     nodeslice, factorslice, gslice, hslice = zipslice
-    #     gsum, hsum, nodecansplit = acc0
-    #     for i in range(len(nodeslice)):
-    #         nodeid = nodeslice[i]
-    #         if nodecansplit[nodeid]:
-    #             levelindex = factorslice[i]
-    #             gsum[nodeid, levelindex] += gslice[i]
-    #             hsum[nodeid, levelindex] += hslice[i]
-    #     return (gsum, hsum, nodecansplit)
-
     return Seq.reduce(f_hist, (gsum0, hsum0, nodecansplit), zipslices)
 
 def get_histogram(nodeids, nodecansplit, factor, gcovariate, hcovariate, slicelen):
@@ -188,16 +176,6 @@ def splitnodeidsslice(nodeids, factors, issplitnode, nodemap, leftpartitions, fa
     if len(factors) > 0:
         factorslices = NFactorSlicer(factors)(start, length, slicelength) 
         nodeslices = VectorSlicer(nodeids)(start, length, slicelength)
-
-        # @jit(nopython=True, cache=False)
-        # def f(nodeslice, fslices, issplitnode, leftpartitions, factorindex, nodemap):
-        #     for i in range(len(nodeslice)):
-        #         nodeid = nodeslice[i]
-        #         if issplitnode[nodeid]:
-        #             levelindex = fslices[factorindex[nodeid], i]
-        #             nodeslice[i] = nodemap[nodeslice[i]] if leftpartitions[nodeid, levelindex] else nodemap[nodeslice[i]] + 1
-        #         else:
-        #             nodeslice[i] = nodemap[nodeslice[i]]
 
         Seq.foreach(lambda x: f_splitnode(x[0], x[1], issplitnode, leftpartitions, factorindex, nodemap), Seq.zip(nodeslices, factorslices)) 
         
@@ -323,11 +301,6 @@ def predict(treenodes, nodeids, fm, eta, lambda_):
     weights = np.empty(len(treenodes), dtype=np.float32)
     for (i, node) in enumerate(treenodes):
         weights[i] = -node.ghsum[0] / (node.ghsum[1] + lambda_)
-
-    # @jit(nopython=True, cache=False)
-    # def f_weights(nodeids, weights, fm, eta):
-    #     for i in range(len(nodeids)):
-    #         fm[i] = eta * weights[nodeids[i]] + fm[i]
 
     f_weights(nodeids, weights, fm, eta)
 

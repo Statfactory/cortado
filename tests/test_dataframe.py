@@ -1,14 +1,11 @@
 from context import cortado
-from cortado.seq import Seq
-from cortado.dataframe import DataFrame
-from cortado.factor import factor
+from cortado import DataFrame
 import numpy as np
 from datetime import datetime
 from numba import jit
 from numba.targets.registry import CPUDispatcher
 from inspect import Signature
-from cortado.logistic import logit_h
-from cortado.covariate import Covariate
+from cortado import Covariate
 import tempfile
 from pathlib import Path
 import pandas as pd

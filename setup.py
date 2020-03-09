@@ -7,8 +7,8 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="cortado",
-    version="1.0-rc2",
-    description="High performance ML library with XGBoost implementation in pure Python",
+    version="1.0-rc3",
+    description="High performance ML library with ultra fast XGBoost implementation in pure Python",
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/Statfactory/cortado",

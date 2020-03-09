@@ -10,28 +10,6 @@ from cortado.cutcovfactor import CutCovFactor
 from cortado.vectorslicer import VectorSlicer
 from cortado.fileslicer import FileSlicer
 
-def factor(*args, cuts = None):
-    if len(args) == 1 and isinstance(args[0], AbstractCovariate):
-        c = args[0]
-        if cuts is not None:
-            cuts = np.array(cuts, dtype=c.slicer.dtype)
-            if cuts[0] != np.NINF:
-                cuts = np.insert(cuts, 0, np.NINF)
-            if cuts[len(cuts)] != np.PINF:
-                cuts = np.append(cuts, np.PINF)
-            return CutCovFactor(c, cuts)
-        else:
-            unique_ = c.unique()
-            n = len(unique_)
-            cuts = np.empty(n + 1, dtype=np.float32)
-            cuts[0] = np.NINF
-            for i in range(n):
-                if i == n - 1:
-                    cuts[i + 1] = np.PINF
-                else:
-                    cuts[i + 1] = unique_[i] + 0.5 * (unique_[i + 1] - unique_[i])
-            return CutCovFactor(c, cuts)
-
 class Factor(AbstractFactor):
     def __init__(self, name, length, levels, slicer):
         self._name = name
@@ -48,6 +26,28 @@ class Factor(AbstractFactor):
     def from_file(cls, name, length, levels, path, dtype):
         slicer = FileSlicer(path, dtype)
         return cls(name, length, levels, slicer)
+
+    @classmethod
+    def from_covariate(cls, covariate, cuts = None, rightclosed = False):
+        assert isinstance(covariate, AbstractCovariate)
+        if cuts is not None:
+            cuts = np.array(cuts, dtype=np.float32)
+            if cuts[0] != np.NINF:
+                cuts = np.insert(cuts, 0, np.NINF)
+            if cuts[len(cuts)] != np.PINF:
+                cuts = np.append(cuts, np.PINF)
+            return CutCovFactor(covariate, cuts=cuts, rightclosed=rightclosed)
+        else:
+            unique_ = covariate.unique()
+            n = len(unique_)
+            cuts = np.empty(n + 1, dtype=np.float32)
+            cuts[0] = np.NINF
+            for i in range(n):
+                if i == n - 1:
+                    cuts[i + 1] = np.PINF
+                else:
+                    cuts[i + 1] = unique_[i] + 0.5 * (unique_[i + 1] - unique_[i])
+            return CutCovFactor(covariate, cuts=cuts, rightclosed=rightclosed)
 
     @property
     def name(self):

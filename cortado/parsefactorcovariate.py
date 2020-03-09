@@ -2,9 +2,8 @@ from cortado.abstractcovariate import AbstractCovariate
 import numpy as np
 from cortado.seq import Seq
 from cortado.funcslicer import FuncSlicer
+import types
 from numba import jit
-from numba.typed import Dict
-from numba import types
 
 @jit(nopython=True)
 def g_parse(slice, buf, parsed):
@@ -20,12 +19,17 @@ class ParseFactorCovariate(AbstractCovariate):
         self._name = name
         self._length = len(basefactor)
         self.basefactor = basefactor
-        self.func = func
+        if isinstance(func, types.FunctionType):
+            self.func = func
+        elif isinstance(func, dict):
+            self.func = lambda level: np.float32(func[level]) if level in func else np.float32(np.nan)
+        else:
+            raise NotImplementedError()
 
-        levels = basefactor.levels
-        parsed = np.empty(len(levels))
+        levels = basefactor.levels   
+        parsed = np.empty(len(levels), dtype=np.float32)
         for i, level in enumerate(levels):
-            parsed[i] = func(level)
+            parsed[i] = np.float32(self.func(level))
 
         def slice(start, length, slicelen):
             buf = np.empty(slicelen, dtype = np.float32)
