@@ -26,3 +26,5 @@ pip install cortado
 ## How to contribute
 
 All contributions and bug reports are welcome.
+
+I'm available for hire!
