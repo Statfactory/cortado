@@ -250,7 +250,7 @@ def getnewsplit(histograms, nodes, factor, lambda_, gamma, minh):
     newsplit = [None for i in range(len(nodes))]
     for i in range(len(nodes)):
         hist = (histograms[0][i,:], histograms[1][i,:])
-        if isinstance(nodes[i], LeafNode) and nodes[i].cansplit:
+        if isinstance(nodes[i], LeafNode) and nodes[i].cansplit and np.sum(nodes[i].partitions[factor]) > 1:
             newsplit[i] = get_splitnode(factor, nodes[i], hist, lambda_, minh)
     return newsplit
 
